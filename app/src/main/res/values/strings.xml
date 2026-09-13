@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Miro Agent</string>
+    <string name="accessibility_service_description">Lets Miro inspect and control the visible app to complete tasks you request.</string>
+</resources>

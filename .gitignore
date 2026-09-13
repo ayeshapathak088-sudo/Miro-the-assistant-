@@ -13,6 +13,12 @@ bin-release/
 *.ipa
 *.apk
 
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+
 # Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
 # should NOT be excluded as they contain compiler settings and other important
 # information for Eclipse / Flash Builder.
