@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,12 +46,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private val audioPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -81,6 +86,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AgentApp(context: Context, onStartVoice: () -> Unit, onStopVoice: () -> Unit) {
     val controller = remember { AgentController(context.applicationContext) }
@@ -91,6 +97,9 @@ private fun AgentApp(context: Context, onStartVoice: () -> Unit, onStopVoice: ()
     var apiKey by remember { mutableStateOf(securePreferences.apiKey) }
     var endpoint by remember { mutableStateOf(securePreferences.endpoint) }
     var model by remember { mutableStateOf(securePreferences.model) }
+    var aiTestStatus by remember { mutableStateOf<String?>(null) }
+    var testingAi by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var accessibilityEnabled by remember { mutableStateOf(isAccessibilityEnabled(context)) }
     var overlayEnabled by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var projectionGranted by remember { mutableStateOf(false) }
@@ -169,7 +178,32 @@ private fun AgentApp(context: Context, onStartVoice: () -> Unit, onStopVoice: ()
                     OutlinedTextField(apiKey, { apiKey = it }, Modifier.fillMaxWidth(), label = { Text("API key (encrypted on device)") }, visualTransformation = PasswordVisualTransformation())
                     OutlinedTextField(endpoint, { endpoint = it }, Modifier.fillMaxWidth(), label = { Text("OpenAI-compatible endpoint") })
                     OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Model") })
-                    Button(onClick = { securePreferences.apiKey = apiKey; securePreferences.endpoint = endpoint; securePreferences.model = model }) { Text("Save provider settings") }
+                    Row {
+                        Button(onClick = {
+                            securePreferences.apiKey = apiKey
+                            securePreferences.endpoint = endpoint
+                            securePreferences.model = model
+                            aiTestStatus = "Settings saved."
+                        }) { Text("Save provider settings") }
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(enabled = !testingAi && apiKey.isNotBlank(), onClick = {
+                            securePreferences.apiKey = apiKey
+                            securePreferences.endpoint = endpoint
+                            securePreferences.model = model
+                            testingAi = true
+                            aiTestStatus = "Testing AI..."
+                            scope.launch {
+                                aiTestStatus = try {
+                                    withContext(Dispatchers.IO) { controller.testConnection() }
+                                } catch (error: Exception) {
+                                    "AI test failed: ${error.message ?: "Unknown error"}"
+                                } finally {
+                                    testingAi = false
+                                }
+                            }
+                        }) { Text(if (testingAi) "Testing..." else "Test AI") }
+                    }
+                    aiTestStatus?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 }
                 item { Text("Execution log", style = MaterialTheme.typography.titleLarge) }
                 if (logs.isEmpty()) item { Text("No runs yet.", style = MaterialTheme.typography.bodyMedium) }

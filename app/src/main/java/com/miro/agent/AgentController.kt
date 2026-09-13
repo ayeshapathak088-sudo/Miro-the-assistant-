@@ -43,6 +43,8 @@ class AgentController(
         append(LogKind.INFO, "Stopped by user")
     }
 
+    suspend fun testConnection(): String = client.testConnection()
+
     private suspend fun runLoop(goal: String) {
         repeat(MAX_STEPS) { step ->
             val service = AgentAccessibilityService.current ?: error("Enable Miro Agent in Accessibility settings first.")

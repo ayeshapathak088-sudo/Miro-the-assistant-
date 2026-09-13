@@ -10,6 +10,18 @@ import java.net.URL
 class VlmClient(private val preferences: SecurePreferences) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    suspend fun testConnection(): String {
+        val action = nextAction(
+            goal = "Confirm that you are reachable by returning a finish action.",
+            history = emptyList(),
+            state = ScreenState(packageName = null, elements = emptyList())
+        )
+        check(action.action.equals("finish", ignoreCase = true) || action.taskComplete) {
+            "The model responded, but did not return a valid finish action."
+        }
+        return action.message ?: "AI connection is working."
+    }
+
     suspend fun nextAction(goal: String, history: List<AgentLog>, state: ScreenState): AgentAction {
         val apiKey = preferences.apiKey
         require(apiKey.isNotBlank()) { "Add an API key before running an agent task." }
